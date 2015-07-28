@@ -12,10 +12,10 @@
 
 clear all
 set more off
-global S_SHELL "cmd /c start /min"
+global S_SHELL "cmd.exe"
 
 * set local working directory (CHANGE THIS!)
-cd Q:\stata\AA_rename
+cd Q:\stata\bin\AA_rename
 
 * define local variables (CHANGE THESE!)
 local filename = "example_audio_xlsform.csv"
@@ -41,17 +41,24 @@ local N = _N
 
 * loop through audio fields and rename associated audio files
 foreach field of local fields {
+  capture assert mi(`field')
+  if !_rc {
+    drop `field'
+	continue
+  }
   replace fext = regexs(1) if(regexm(`field', "(\.[a-z0-9]*)"))
   replace uuid = regexs(1) if(regexm(key, ":([a-z0-9\-]*)"))
-  replace fstr1 = `field'
+  replace fstr1 = `field' 
   replace fstr2 = "wav\AA_" + uuid + "_" + "`field'" + fext
   replace fstr3 = "wav\AA_" + uuid + "_" + "`field'"
-  forvalues i = 1/`N'{
-  	local f1 = fstr1[`i']
-	local f2 = fstr2[`i']
-	local f3 = fstr3[`i']+".wav"
-	cp "`f1'" "`f2'", replace
-	quietly winexec ffmpeg -i "`f2'" "`f3'" -y
-	erase "`f2'"
+  forvalues i = 1/`N' {
+  	if fstr1[`i'] != "" & !missing(fstr1[`i']) & fext[`i'] ==".3gpp" {
+		local f1 = fstr1[`i']
+		local f2 = fstr2[`i']
+		local f3 = fstr3[`i']+".wav"
+		quietly cp "`f1'" "`f2'", replace
+		!ffmpeg -i "`f2'" "`f3'" -y
+	}
   }
 }
+!erase wav\*.3gpp
